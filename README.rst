@@ -35,6 +35,34 @@ PyiCloud is a module which allows pythonistas to interact with iCloud webservice
 At its core, PyiCloud connects to iCloud using your username and password, then performs calendar and iPhone queries against their API.
 
 
+Known Issues & Fixes
+====================
+
+HTTP 421 "Misdirected Request" on Linux (non-Apple networks)
+-------------------------------------------------------------
+
+When using pyicloud from Linux or any non-Apple network, the initial call to
+``setup.icloud.com/validate`` may return HTTP 421 (Misdirected Request).
+This is caused by Apple's HTTP/2 connection coalescing behavior — the server
+routes the TCP connection to a different virtual host than expected. It is
+**not a real authentication failure**.
+
+Prior to this fix, pyicloud would treat 421 as an invalid session token and
+attempt a full re-login with username + password. This re-login then hit
+``idmsa.apple.com`` which returns 503 (rate-limiting), causing a
+``PyiCloudFailedLoginException`` even when the session was perfectly valid.
+
+**The fix** (in ``authenticate()``): when 421 is returned from ``/validate``,
+fall through to ``_authenticate_with_token()`` which uses the existing
+``session_token`` + ``trust_token`` to call ``/accountLogin`` directly.
+This succeeds without requiring a password or 2FA, and without triggering
+Apple's rate-limiting on the auth endpoint.
+
+The fix was confirmed working on:
+
+- Arch Linux (kernel 6.18, Python 3.14)
+- pyicloud 1.0.0 + iCloudDriveFuse FUSE driver
+
 Authentication
 ==============
 
@@ -410,6 +438,137 @@ To download a specific version of the photo asset, pass the version to ``downloa
     download = photo.download('thumb')
     with open(photo.versions['thumb']['filename'], 'wb') as thumb_file:
         thumb_file.write(download.raw.read())
+
+
+Mounting iCloud Drive on Linux (FUSE)
+=====================================
+
+You can mount iCloud Drive as a local filesystem on Linux using
+`iCloudDriveFuse <https://github.com/ixs/iCloudDriveFuse>`_.
+
+Prerequisites
+-------------
+
+.. code-block:: console
+
+    # Arch Linux
+    sudo pacman -S fuse3 python-cachetools
+    yay -S python-pyicloud-git python-fusepy
+
+    # Debian/Ubuntu (adapt package names as needed)
+    sudo apt install fuse3 python3-cachetools
+    pip install pyicloud fusepy
+
+Step 1 — Authenticate and save session cookies
+-----------------------------------------------
+
+Run the ``icloud`` CLI tool once to authenticate and persist the session:
+
+.. code-block:: console
+
+    icloud --username your@apple.id
+
+Enter your Apple ID password when prompted. If 2FA is enabled, approve the
+push notification on your Apple device and enter the 6-digit code.
+
+The session cookies are saved to ``/tmp/pyicloud/<username>/`` by default.
+Move them to a persistent location so they survive reboots:
+
+.. code-block:: console
+
+    mkdir -p ~/.config/pyicloud
+    chmod 700 ~/.config/pyicloud
+    cp /tmp/pyicloud/$(whoami)/* ~/.config/pyicloud/
+
+Step 2 — Store credentials in .netrc
+-------------------------------------
+
+.. code-block:: console
+
+    touch ~/.netrc && chmod 600 ~/.netrc
+
+Add the following to ``~/.netrc`` (replace with your Apple ID and password):
+
+.. code-block:: text
+
+    machine icloud
+    login your@apple.id
+    password yourpassword
+
+Step 3 — Clone iCloudDriveFuse and patch cookie directory
+----------------------------------------------------------
+
+.. code-block:: console
+
+    git clone https://github.com/ixs/iCloudDriveFuse.git ~/iCloudDriveFuse
+
+Edit ``~/iCloudDriveFuse/iCloudDriveFuse.py`` and change the ``__init__``
+method to pass ``cookie_directory`` pointing to your persistent store:
+
+.. code-block:: python
+
+    def __init__(self):
+        self.username, _, self.password = netrc.netrc().authenticators("icloud")
+        cookie_dir = os.path.expanduser("~/.config/pyicloud")
+        self._api = PyiCloudService(self.username, self.password, cookie_directory=cookie_dir)
+
+Step 4 — Mount
+--------------
+
+.. code-block:: console
+
+    mkdir -p ~/iCloud
+    python ~/iCloudDriveFuse/iCloudDriveFuse.py ~/iCloud
+
+Step 5 — Auto-mount via systemd (optional)
+-------------------------------------------
+
+Create ``~/.config/systemd/user/icloud-drive.service``:
+
+.. code-block:: ini
+
+    [Unit]
+    Description=iCloud Drive FUSE Mount
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/bin/python /home/YOUR_USER/iCloudDriveFuse/iCloudDriveFuse.py /home/YOUR_USER/iCloud
+    ExecStop=/usr/bin/fusermount -u /home/YOUR_USER/iCloud
+    Restart=on-failure
+    RestartSec=10
+
+    [Install]
+    WantedBy=default.target
+
+Then enable it:
+
+.. code-block:: console
+
+    systemctl --user daemon-reload
+    systemctl --user enable --now icloud-drive.service
+
+Maintenance
+-----------
+
+Apple trust tokens expire approximately every two months. When the mount
+stops working, re-run the authentication step:
+
+.. code-block:: console
+
+    icloud --username your@apple.id
+    cp /tmp/pyicloud/$(whoami)/* ~/.config/pyicloud/
+    systemctl --user restart icloud-drive.service
+
+Note on HTTP 421 errors
+-----------------------
+
+If you see ``Authentication required for Account. (421)`` in the logs, this
+is the issue described in the "Known Issues" section above. Make sure you are
+using a version of pyicloud that includes the 421 fix in ``authenticate()``.
+The fix is included in this fork. See ``pyicloud/base.py:authenticate()`` for
+the implementation.
 
 
 Code samples
