@@ -50,7 +50,7 @@ HTTP 421 "Misdirected Request" on Linux (non-Apple networks)
 
 When using pyicloud from Linux or any non-Apple network, the initial call to
 ``setup.icloud.com/validate`` may return HTTP 421 (Misdirected Request).
-This is caused by Apple's HTTP/2 connection coalescing behavior — the server
+This is caused by Apple's HTTP/2 connection coalescing behavior - the server
 routes the TCP connection to a different virtual host than expected. It is
 **not a real authentication failure**.
 
@@ -466,7 +466,7 @@ Prerequisites
     sudo apt install fuse3 python3-cachetools
     pip install pyicloud fusepy
 
-Step 1 — Authenticate and save session cookies
+Step 1 - Authenticate and save session cookies
 -----------------------------------------------
 
 Run the ``icloud`` CLI tool once to authenticate and persist the session:
@@ -487,7 +487,7 @@ Move them to a persistent location so they survive reboots:
     chmod 700 ~/.config/pyicloud
     cp /tmp/pyicloud/$(whoami)/* ~/.config/pyicloud/
 
-Step 2 — Store credentials in .netrc
+Step 2 - Store credentials in .netrc
 -------------------------------------
 
 .. code-block:: console
@@ -502,7 +502,7 @@ Add the following to ``~/.netrc`` (replace with your Apple ID and password):
     login your@apple.id
     password yourpassword
 
-Step 3 — Clone iCloudDriveFuse and patch cookie directory
+Step 3 - Clone iCloudDriveFuse and patch cookie directory
 ----------------------------------------------------------
 
 .. code-block:: console
@@ -519,7 +519,7 @@ method to pass ``cookie_directory`` pointing to your persistent store:
         cookie_dir = os.path.expanduser("~/.config/pyicloud")
         self._api = PyiCloudService(self.username, self.password, cookie_directory=cookie_dir)
 
-Step 4 — Mount
+Step 4 - Mount
 --------------
 
 .. code-block:: console
@@ -527,7 +527,7 @@ Step 4 — Mount
     mkdir -p ~/iCloud
     python ~/iCloudDriveFuse/iCloudDriveFuse.py ~/iCloud
 
-Step 5 — Auto-mount via systemd (optional)
+Step 5 - Auto-mount via systemd (optional)
 -------------------------------------------
 
 Create ``~/.config/systemd/user/icloud-drive.service``:
