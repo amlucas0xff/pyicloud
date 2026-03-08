@@ -294,8 +294,27 @@ class PyiCloudService:
             try:
                 self.data = self._validate_token()
                 login_successful = True
-            except PyiCloudAPIResponseException:
-                LOGGER.debug("Invalid authentication token, will log in from scratch.")
+            except PyiCloudAPIResponseException as err:
+                if getattr(err, "code", None) == 421:
+                    # Apple's setup.icloud.com/validate returns HTTP 421
+                    # (Misdirected Request) for non-Apple IP connections due to
+                    # HTTP/2 connection coalescing. This is not a real auth
+                    # failure — the existing session_token and trust_token are
+                    # still valid. Fall through to token-based re-auth via
+                    # /accountLogin instead of forcing a full password login.
+                    LOGGER.debug(
+                        "Got 421 on validate (Apple HTTP/2 coalescing issue), "
+                        "attempting token-based re-auth"
+                    )
+                    try:
+                        self._authenticate_with_token()
+                        login_successful = True
+                    except Exception:
+                        LOGGER.debug(
+                            "Token re-auth failed, will log in from scratch."
+                        )
+                else:
+                    LOGGER.debug("Invalid authentication token, will log in from scratch.")
 
         if not login_successful and service is not None:
             app = self.data["apps"][service]
