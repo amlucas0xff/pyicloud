@@ -11,6 +11,7 @@ PyiCloud is a module which allows pythonistas to interact with iCloud webservice
 
 At its core, PyiCloud connects to iCloud using your username and password, then performs calendar and iPhone queries against their API.
 
+> [!TIP]
 > **Linux users:** pyicloud fails out-of-the-box on Linux due to Apple returning HTTP 421 on the session validation endpoint. This fork includes a fix. See [Known Issues and Fixes](#known-issues-and-fixes) for the explanation and [Mounting iCloud Drive on Linux](#mounting-icloud-drive-on-linux) for a full setup guide.
 
 ---
