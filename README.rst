@@ -38,12 +38,12 @@ At its core, PyiCloud connects to iCloud using your username and password, then 
 
    **Linux users:** pyicloud fails out-of-the-box on Linux due to Apple returning
    HTTP 421 on the session validation endpoint. This fork includes a fix.
-   See `Known Issues & Fixes`_ for the explanation and
-   `Mounting iCloud Drive on Linux (FUSE)`_ for a full setup guide.
+   See `Known Issues and Fixes`_ for the explanation and
+   `Mounting iCloud Drive on Linux`_ for a full setup guide.
 
 
-Known Issues & Fixes
-====================
+Known Issues and Fixes
+======================
 
 HTTP 421 "Misdirected Request" on Linux (non-Apple networks)
 -------------------------------------------------------------
@@ -447,8 +447,8 @@ To download a specific version of the photo asset, pass the version to ``downloa
         thumb_file.write(download.raw.read())
 
 
-Mounting iCloud Drive on Linux (FUSE)
-=====================================
+Mounting iCloud Drive on Linux
+==============================
 
 You can mount iCloud Drive as a local filesystem on Linux using
 `iCloudDriveFuse <https://github.com/ixs/iCloudDriveFuse>`_.
