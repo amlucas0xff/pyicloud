@@ -28,7 +28,7 @@ Prior to this fix, pyicloud would treat 421 as an invalid session token and atte
 
 Confirmed working on:
 
-- Arch Linux (kernel 6.18, Python 3.14)
+- Arch Linux (kernel 6.18, Python 3.14 — fix uses no version-specific features, works on Python 3.9+)
 - pyicloud 1.0.0 + iCloudDriveFuse FUSE driver
 
 ---
@@ -263,8 +263,10 @@ sudo pacman -S fuse3 python-cachetools
 yay -S python-pyicloud-git python-fusepy
 
 # Debian/Ubuntu
+# NOTE: `pip install pyicloud` installs upstream without the 421 fix.
+# Install from this fork instead:
 sudo apt install fuse3 python3-cachetools
-pip install pyicloud fusepy
+pip install "git+https://github.com/amlucas0xff/pyicloud.git@fix/421-misdirected-request-on-validate" fusepy
 ```
 
 ### Step 1 - Authenticate and save session cookies
